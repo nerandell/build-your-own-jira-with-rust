@@ -34,7 +34,12 @@ use std::fmt::Formatter;
 pub enum Command {
     /// Create a ticket on your board.
     Create {
-        __
+        /// The title of the ticket.
+        #[structopt(long)]
+        title: TicketTitle,
+        /// The description of the ticket.
+        #[structopt(long)]
+        description: TicketDescription,
     },
     /// Edit the details of an existing ticket.
     Edit {
@@ -53,7 +58,8 @@ pub enum Command {
     },
     /// Delete a ticket from the store passing the ticket id.
     Delete {
-        __
+        #[structopt(long)]
+        ticket_id: TicketId,
     },
     /// List all existing tickets.
     List,
@@ -68,23 +74,37 @@ impl FromStr for Status {
     type Err = ParsingError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        __
+        match s {
+            "todo" => Ok(Status::ToDo),
+            "in-progress" => Ok(Status::InProgress),
+            "blocked" => Ok(Status::Blocked),
+            "done" => Ok(Status::Done),
+            _ => Err(ParsingError(format!("Unknown status: {}", s)))
+        }
     }
 }
 
 impl FromStr for TicketTitle {
-    __
+    type Err = ParsingError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        TicketTitle::new(s.to_string()).or_else(|e| Err(ParsingError(e.to_string())))
+    }
 }
 
 impl FromStr for TicketDescription {
-    __
+    type Err = ParsingError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        TicketDescription::new(s.to_string()).or_else(|e| Err(ParsingError(e.to_string())))
+    }
 }
 
 /// Our error struct for parsing failures.
 #[derive(Debug)]
 pub struct ParsingError(String);
 
-impl Error for ParsingError { }
+impl Error for ParsingError {}
 
 impl std::fmt::Display for ParsingError {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
@@ -104,7 +124,10 @@ impl std::fmt::Display for ParsingError {
 pub fn handle_command(ticket_store: &mut TicketStore, command: Command) -> Result<(), Box<dyn Error>> {
     match command {
         Command::Create { description, title } => {
-            todo!()
+            ticket_store.save(TicketDraft {
+                title,
+                description,
+            });
         }
         Command::Edit {
             id,
@@ -112,7 +135,11 @@ pub fn handle_command(ticket_store: &mut TicketStore, command: Command) -> Resul
             description,
             status,
         } => {
-            todo!()
+            ticket_store.update(&id, TicketPatch {
+                title,
+                description,
+                status,
+            });
         }
         Command::Delete { ticket_id } => match ticket_store.delete(&ticket_id) {
             Some(deleted_ticket) => println!(
@@ -125,7 +152,9 @@ pub fn handle_command(ticket_store: &mut TicketStore, command: Command) -> Resul
             ),
         },
         Command::List => {
-            todo!()
+            ticket_store.list().iter().for_each(|ticket| {
+                println!("{:?}", ticket);
+            });
         }
     }
     Ok(())
